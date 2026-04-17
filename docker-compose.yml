@@ -1,0 +1,53 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ngs_platform
+      POSTGRES_USER: ngs
+      POSTGRES_PASSWORD: ngs
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  backend:
+    build:
+      context: ./backend
+    env_file:
+      - ./backend/.env.example
+    environment:
+      DATABASE_URL: postgresql://ngs:ngs@postgres:5432/ngs_platform
+      STORAGE_ROOT: /data/platform_storage
+      TEMP_UPLOAD_ROOT: /data/platform_storage/uploads
+      RESULT_ROOT: /data/platform_storage/results
+      LOG_ROOT: /data/platform_storage/logs
+      METADATA_ROOT: /data/platform_storage/metadata
+      CORS_ORIGINS: '["http://localhost:5173"]'
+    volumes:
+      - platform_storage:/data/platform_storage
+      - ./backend/app:/app/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+
+  frontend:
+    build:
+      context: ./frontend
+    env_file:
+      - ./frontend/.env.example
+    environment:
+      VITE_API_BASE_URL: http://localhost:8000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+  platform_storage:
